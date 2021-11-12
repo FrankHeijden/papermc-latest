@@ -33,9 +33,7 @@ async function handleResponse(event) {
     return errorResponse(
       'NotFound',
       'Not found.',
-      `Project "${project}" does not exist. Must be one of ${JSON.stringify(
-        projects,
-      )}.`,
+      `Project "${project}" does not exist. Must be one of ${JSON.stringify(projects,)}.`,
       404,
       'Not Found',
     )
@@ -50,9 +48,7 @@ async function handleResponse(event) {
     return errorResponse(
       'NotFound',
       'Not found.',
-      `Version "${version}" does not exist. Must be one of ${JSON.stringify(
-        versions,
-      )}.`,
+      `Version "${version}" does not exist. Must be one of ${JSON.stringify(versions)}.`,
       404,
       'Not Found',
     )
@@ -67,9 +63,7 @@ async function handleResponse(event) {
   // Append information part
   endpoint += INFORMATION_API_ENDPOINT.replace('{build}', `${latestBuild}`)
 
-  const download = (await (await fetch(endpoint)).json())['downloads'][
-    'application'
-  ]['name']
+  const download = (await (await fetch(endpoint)).json())['downloads']['application']['name']
 
   // Append download part
   endpoint += DOWNLOAD_API_ENDPOINT.replace('{download}', download)
