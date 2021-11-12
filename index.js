@@ -74,7 +74,7 @@ async function handleResponse(event) {
   // Append download part
   endpoint += DOWNLOAD_API_ENDPOINT.replace('{download}', download)
 
-  return await fetch(endpoint)
+  return Response.redirect(endpoint, 307);
 }
 
 function errorResponse(code, message, details, status, statusText) {
