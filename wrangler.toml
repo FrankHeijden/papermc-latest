@@ -1,0 +1,7 @@
+name = "papermc"
+type = "webpack"
+account_id = "326bd0a4b72213bcf7f6cdff5e7b3313"
+workers_dev = true
+route = ""
+zone_id = "528d8ede5e2c958e299793b84e68a89f"
+compatibility_date = "2021-11-12"
