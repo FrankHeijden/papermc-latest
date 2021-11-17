@@ -1,22 +1,38 @@
-export function notFoundResponse(
+export function elementNotFoundResponse(
   element: string,
   elements: string[],
   name: string,
 ) {
+  const details = element === ''
+    ? `Please specify a(n) ${name}.`
+    : `${capitalizeFirst(name)} '${element}' does not exist.`;
+  return notFoundResponse(
+    details,
+    {
+      possibleValues: elements,
+    },
+  );
+}
 
-  let prefix: string;
-  if (element === '') {
-    prefix = `Please specify a(n) ${name}.`;
-  } else {
-    prefix = `${name} '${element}' does not exist.`;
-  }
-
+export function notFoundResponse(details: string, extra = {}) {
   return errorResponse(
     'NotFound',
     'Not found.',
-    `${prefix} Possible values: ${arrayToString(elements)}.`,
+    details,
     404,
     'Not Found',
+    extra,
+  );
+}
+
+export function serverErrorResponse(error: Error, extra = {}) {
+  return errorResponse(
+    'InternalServerError',
+    'Internal Server Error.',
+    error.message ?? `An internal server occurred.`,
+    500,
+    'Internal Server Error',
+    extra,
   );
 }
 
@@ -26,13 +42,23 @@ export function errorResponse(
   details: string,
   status: number,
   statusText: string,
+  extra = {},
 ) {
+  if (!isEmpty(extra)) {
+    extra = {
+      extra: {
+        ...extra,
+      },
+    };
+  }
+
   return new Response(
     JSON.stringify({
       error: {
         code: code,
         message: message,
         details: details,
+        ...extra,
       },
     }),
     {
@@ -45,10 +71,12 @@ export function errorResponse(
   );
 }
 
-export function arrayToString(elements: string[]) {
-  if (elements.length === 0) return '[]';
+function isEmpty(obj: {}) {
+  return obj
+    && Object.keys(obj).length === 0
+    && Object.getPrototypeOf(obj) === Object.prototype
+}
 
-  let str = '[';
-  elements.forEach(e => str += '\'' + e + '\', ');
-  return str.substr(0, str.length - ', '.length) + ']';
+function capitalizeFirst(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

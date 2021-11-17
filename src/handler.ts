@@ -1,55 +1,83 @@
-import { notFoundResponse } from './utils';
+import { notFoundResponse, elementNotFoundResponse, serverErrorResponse } from './utils'
+import { Router } from 'itty-router'
+
+export const router = Router();
+const v1Router = Router({ base: '/v1' });
+const projectRouter = Router({ base: '/v1/:project' });
 
 const BASE_API_ENDPOINT = 'https://papermc.io/api/v2';
 const PROJECTS_API_ENDPOINT = '/projects';
-const VERSIONS_API_ENDPOINT = '/{project}';
-const BUILDS_API_ENDPOINT = '/versions/{version}';
-const INFORMATION_API_ENDPOINT = '/builds/{build}';
+const PROJECT_API_ENDPOINT = '/{project}';
+const VERSION_API_ENDPOINT = '/versions/{version}';
+const BUILD_API_ENDPOINT = '/builds/{build}';
 const DOWNLOAD_API_ENDPOINT = '/downloads/{download}';
 
-export async function handleRequest(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const path = url.pathname.split('/');
+router
+  .get('/v1/*', v1Router.handle)
+  .get('/:api?', (req) => elementNotFoundResponse(
+    req.params!.api ?? '',
+    ['v1'],
+    'API Version',
+  ))
+  .get('*', () => notFoundResponse('Endpoint does not exist.'))
 
-  const api = path[1] ?? '';
-  if (api !== 'v1') {
-    return notFoundResponse(api, ['v1'], 'API version');
-  }
+v1Router
+  .get('/:project?/*', async (req) => {
+    const endpoint = BASE_API_ENDPOINT + PROJECTS_API_ENDPOINT;
 
-  let endpoint = BASE_API_ENDPOINT + PROJECTS_API_ENDPOINT;
+    const project = req.params?.project ?? '';
+    const projects = await fetch(endpoint)
+      .then(res => res.json<any>())
+      .then(body => body['projects']);
 
-  const project = path[2] ?? '';
-  // @ts-ignore
-  const projects = (await (await fetch(endpoint)).json())['projects'];
-  if (!projects.includes(project)) {
-    return notFoundResponse(project, projects, 'Project');
-  }
+    if (!projects.includes(project)) {
+      return elementNotFoundResponse(project, projects, 'project');
+    }
 
-  // Append version part
-  endpoint += VERSIONS_API_ENDPOINT.replace('{project}', project);
+    return projectRouter.handle(req);
+  })
 
-  const version = path[3] ?? '';
-  // @ts-ignore
-  const versions = (await (await fetch(endpoint)).json())['versions'];
-  if (!versions.includes(version)) {
-    return notFoundResponse(version, versions, 'Version');
-  }
+projectRouter
+  .get('/:version?', async (req) => {
+    let endpoint = BASE_API_ENDPOINT + PROJECTS_API_ENDPOINT;
 
-  // Append build part
-  endpoint += BUILDS_API_ENDPOINT.replace('{version}', version);
+    // Append project part
+    endpoint += PROJECT_API_ENDPOINT.replace(
+      '{project}',
+      req.params!.project as string
+    );
 
-  // @ts-ignore
-  const builds = (await (await fetch(endpoint)).json())['builds'];
-  const latestBuild = Math.max(...builds);
+    const version = req.params!.version ?? '';
+    const versions = await fetch(endpoint)
+      .then(res => res.json<any>())
+      .then(body => body['versions']);
+    if (!versions.includes(version)) {
+      return elementNotFoundResponse(version, versions, 'version');
+    }
 
-  // Append information part
-  endpoint += INFORMATION_API_ENDPOINT.replace('{build}', `${latestBuild}`);
+    // Append version part
+    endpoint += VERSION_API_ENDPOINT.replace('{version}', version);
 
-  // @ts-ignore
-  const download = (await (await fetch(endpoint)).json())['downloads']['application']['name'];
+    const builds = await fetch(endpoint)
+      .then(res => res.json<any>())
+      .then(body => body['builds']);
+    const latestBuild = Math.max(...builds);
 
-  // Append download part
-  endpoint += DOWNLOAD_API_ENDPOINT.replace('{download}', download);
+    // Append build part
+    endpoint += BUILD_API_ENDPOINT.replace('{build}', `${latestBuild}`);
 
-  return Response.redirect(endpoint, 307);
+    const download = await fetch(endpoint)
+      .then(res => res.json<any>())
+      .then(body => body['downloads']['application']['name']);
+
+    // Append download part
+    endpoint += DOWNLOAD_API_ENDPOINT.replace('{download}', download);
+
+    return Response.redirect(endpoint, 307);
+  })
+
+export async function handleRequest(event: FetchEvent): Promise<Response> {
+  return router
+    .handle(event.request)
+    .catch(serverErrorResponse)
 }
